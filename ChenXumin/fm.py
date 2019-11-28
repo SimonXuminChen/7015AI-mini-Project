@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import sys
+
 sys.path.append("..")
 import preprocessing.preprocessing
 
@@ -12,11 +13,11 @@ def load_data(filename):
     for line in data.readlines():
         feature_tmp = []
         lines = preprocessing.outlier_detect(line.strip().split(','))
-        if len(lines)==0:
+        if len(lines) == 0:
             continue
         for x in range(len(lines) - 2):
             feature_tmp.append(float(lines[x]))
-        label.append(lines[-2])
+        label.append(float(lines[-2])*2)
         feature.append(feature_tmp)
     data.close()
     return feature, label
@@ -26,13 +27,14 @@ def constructDataSet(feature):
     return np.mat(feature)
 
 
-# loss function
+# loss function - MSE
 def loss_function(label, y_hat):
-    return 0.5 * np.linalg.norm(label, y_hat) ** 2
+    mse = np.square(float(label) - y_hat).mean()
+    return mse
 
 
 def initialize_w_v(n, k):
-    w = np.ones(n, 1)
+    w = np.ones((n, 1))
     v = np.mat(np.zeros((n, k)))
     for i in range(n):
         for j in range(k):
@@ -46,33 +48,53 @@ def SGD(dataMatrix, classLabels, k, max_iter, learning_rate):
     w, v = initialize_w_v(n, k)
     for it in range(max_iter):
         for x in range(m):
-            v_1 = dataMatrix[x] * v
-            v_2 = np.multiply(dataMatrix[x], dataMatrix[x]) * np.multiply(v, v)
+            v_1 = dataMatrix[x] * v  # x*v
+            v_2 = np.multiply(dataMatrix[x], dataMatrix[x]) * np.multiply(v, v)  # v^2*x^2
             interaction = 0.5 * np.sum(np.multiply(v_1, v_1) - v_2)
+
             p = w0 + dataMatrix[x] * w + interaction
-            # loss = loss_function(classLabels,prediction())
+            loss = loss_function(classLabels[x], p)
             w0 = w0 - learning_rate * loss * classLabels[x]
             for i in range(n):
                 if dataMatrix[x, i] != 0:
-                    w[i, 0] = w[i, 0] - learning_rate * loss * classLabels * dataMatrix[x, i]
+                    w[i, 0] = w[i, 0] - learning_rate * loss * classLabels[x] * dataMatrix[x, i]
                     for j in range(k):
-                        v[i, j] = v[i, j] * learning_rate * loss * classLabels[x] * (
+                        v[i, j] = v[i, j] - learning_rate * loss * classLabels[x] * (
                                     dataMatrix[x, i] * v_1[0, j] - v[i, j] * dataMatrix[x, i] * dataMatrix[x, i])
 
-        if it % 1000 == 0:
-            # print("iteartion: "+str(it)+", error: "+str(get_cost(prediction)))
-            pass
     return w0, w, v
 
 
-def prediction(x, w, v, w0):
-    y = w0 + np.dot(w, x.T) + np.longlong(
-        np.sum((np.dot(x, v) ** 2 - np.dot(x ** 2, v ** 2)), axis=1).reshape(len(x), 1)) / 2.0
-    return y
+def getAccuracy(w0, w, v):
+    feature, labels = load_data("./ratings.csv")
+    dataMatrix = np.mat(feature)
+    m, n = np.shape(dataMatrix)
+    allItem = 0
+    error = 0
+    result = []
+    for x in range(m):
+        allItem += 1
+        v_1 = dataMatrix[x] * v  # x*v
+        v_2 = np.multiply(dataMatrix[x], dataMatrix[x]) * np.multiply(v, v)  # v^2*x^2
+        interaction = 0.5 * np.sum(np.multiply(v_1, v_1) - v_2)
+
+        p = w0 + dataMatrix[x] * w + interaction
+        loss = loss_function(labels, p)
+        result.append(loss)
+
+        if loss == 0:
+            continue
+        else:
+            error += 1
+    print(result)
+    return float(error)/allItem
 
 
-start_time = time.time()
 
+start_training_time = time.time()
 feature, label = load_data("./ratings_small.csv")
-print(label)
-end_time = time.time()
+matrix = np.mat(feature)
+w0, w, v = SGD(matrix, label, 10, 20001, 0.3)
+stop_training_time = time.time()
+print("training time is %s"%(stop_training_time-start_training_time))
+# print("\nAccuracy is %f"%(1-getAccuracy(w0,w,v)))
