@@ -1,6 +1,6 @@
 import numpy as np
-from ChenXumin.preprocessing import outlier_detect
-import time
+from preprocessing import outlier_detect
+
 
 def load_data(filename):
     data=open(filename)
