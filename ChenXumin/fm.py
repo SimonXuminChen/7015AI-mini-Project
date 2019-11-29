@@ -4,7 +4,7 @@ import sys
 
 sys.path.append("..")
 import preprocessing.preprocessing
-
+np.seterr(divide='ignore',invalid='ignore')
 
 def load_data(filename):
     data = open(filename)
@@ -29,7 +29,7 @@ def constructDataSet(feature):
 
 # loss function - MSE
 def loss_function(label, y_hat):
-    mse = np.square(float(label) - y_hat).mean()
+    mse = np.square(label - y_hat).mean()
     return mse
 
 
@@ -46,6 +46,7 @@ def SGD(dataMatrix, classLabels, k, max_iter, learning_rate):
     m, n = np.shape(dataMatrix)
     w0 = 0
     w, v = initialize_w_v(n, k)
+    print("start iteration")
     for it in range(max_iter):
         for x in range(m):
             v_1 = dataMatrix[x] * v  # x*v
@@ -72,6 +73,7 @@ def getAccuracy(w0, w, v):
     allItem = 0
     error = 0
     result = []
+
     for x in range(m):
         allItem += 1
         v_1 = dataMatrix[x] * v  # x*v
@@ -79,7 +81,7 @@ def getAccuracy(w0, w, v):
         interaction = 0.5 * np.sum(np.multiply(v_1, v_1) - v_2)
 
         p = w0 + dataMatrix[x] * w + interaction
-        loss = loss_function(labels, p)
+        loss = loss_function(labels[x], p)
         result.append(loss)
 
         if loss == 0:
@@ -94,7 +96,7 @@ def getAccuracy(w0, w, v):
 start_training_time = time.time()
 feature, label = load_data("./ratings_small.csv")
 matrix = np.mat(feature)
-w0, w, v = SGD(matrix, label, 10, 20001, 0.3)
+w0, w, v = SGD(matrix, label, 10, 200, 0.3)
 stop_training_time = time.time()
 print("training time is %s"%(stop_training_time-start_training_time))
 # print("\nAccuracy is %f"%(1-getAccuracy(w0,w,v)))
