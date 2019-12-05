@@ -7,7 +7,27 @@
 ===================================================
 '''
 import logging
+import numpy as np
 
+import torch
+from torch.utils.data import DataLoader,Dataset
+from torch.autograd import Variable
+
+def load_data(filename):
+    data = open(filename)
+    feature = []
+    label = []
+    for line in data.readlines():
+        feature_tmp = []
+        lines = outlier_detect(line.strip().split(','))
+        if len(lines) == 0:
+            continue
+        for x in range(len(lines) - 2):
+            feature_tmp.append(float(lines[x]))
+        label.append(float(lines[-2])*2)
+        feature.append(feature_tmp)
+    data.close()
+    return feature, label
 
 def outlier_detect(list, min=0., max=5.):
     flag = True
@@ -36,3 +56,29 @@ def outlier_detect(list, min=0., max=5.):
         return new_list
     else:
         return []
+
+
+class movie_Dataset(Dataset):
+    def __init__(self,filename):
+        dataset = np.loadtxt(filename,delimiter=',',skiprows=1,dtype=np.float32)
+        self.feature = []
+        self.label = []
+        for line in dataset.readlines():
+            feature_tmp = []
+            lines = outlier_detect(line.strip().split(','))
+            if len(lines) == 0:
+                continue
+            for x in range(len(lines) - 2):
+                feature_tmp.append(float(lines[x]))
+            self.label.append(float(lines[-2]) * 2)
+            self.feature.append(feature_tmp)
+        self.feature = torch.from_numpy(self.feature)
+        self.label = torch.from_numpy(self.label)
+
+        self.len=dataset.shape[0]
+
+    def __getitem__(self, index):
+        return self.feature[index],self.label[index]
+
+    def __len__(self):
+        return self.len

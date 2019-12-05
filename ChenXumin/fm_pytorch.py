@@ -8,6 +8,13 @@
 '''
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
+
+import sys
+sys.path.append("..")
+import preprocessing.preprocessing
+
+# np.seterr(divide='ignore',invalid='ignore')
 
 class FM_Layer(nn.Module):
     def __init__(self,n=10,k=5):
@@ -29,7 +36,10 @@ class FM_Layer(nn.Module):
         return self.fm_layer(x)
 
 
+
+
+feature, labels = preprocessing.load_data("./ratings.csv")
+dataMatrix = torch.mm(Variable(torch.from_numpy(feature)))
 fm = FM_Layer
 x = torch.randn(1,10)
 output = fm(x)
-
