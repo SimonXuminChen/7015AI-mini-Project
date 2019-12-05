@@ -3,7 +3,8 @@ import time
 import sys
 
 sys.path.append("..")
-import preprocessing.preprocessing
+from tools import preprocessing
+
 np.seterr(divide='ignore',invalid='ignore')
 
 def load_data(filename):
@@ -94,7 +95,7 @@ def getAccuracy(w0, w, v):
 
 
 start_training_time = time.time()
-feature, label = load_data("./ratings_small.csv")
+feature, label = load_data("../data/ratings_small.csv")
 matrix = np.mat(feature)
 w0, w, v = SGD(matrix, label, 10, 200, 0.3)
 stop_training_time = time.time()
