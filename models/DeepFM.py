@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import matplotlib.pyplot as plt
 from time import time
 
 
@@ -18,7 +19,7 @@ class DeepFM(nn.Module):
         self.hidden_dim = hidden_dims
         self.bias = torch.nn.Parameter(torch.randn(1))
         self.embedding_size = embedding_size
-        self.learning_rate = 0.2
+        self.learning_rate = 0.001
         self.bias = self.bias = torch.nn.Parameter(torch.randn(1))
         self.device = torch.device('cpu')
 
@@ -32,18 +33,14 @@ class DeepFM(nn.Module):
 
         # initial dnn model part
         all_dims = [self.field_size * self.embedding_size] + self.hidden_dim
-        self.fc_dim = 100  # fully connected layer dimension
 
         for i in range(1, len(hidden_dims) + 1):
             setattr(self, 'linear_' + str(i),
                     nn.Linear(all_dims[i - 1], all_dims[i]))
-            # nn.init.kaiming_normal_(self.fc1.weight)
             setattr(self, 'batchNorm_' + str(i),
                     nn.BatchNorm1d(all_dims[i]))
             setattr(self, 'dropout_' + str(i),
                     nn.Dropout(dropout[i - 1]))  # dropout is used to prevent overfitting
-
-
 
     def forward(self, Xi, Xv):
         """
@@ -81,46 +78,65 @@ class DeepFM(nn.Module):
         total_sum = torch.sum(fm_first_order, 1) + torch.sum(fm_second_order, 1) + torch.sum(deep_out, 1) + self.bias
         return total_sum
 
-    def fit(self, loader_train,loader_val,epochs=1):
+    def fit(self, loader_train, epochs=1):
         model = self.train().to(device=self.device)
-        loss_function = F.mse_loss
-        optimizer = optim.SGD(self.parameters(), lr=self.learning_rate)
-        for _ in range(2000):
+        loss_function = nn.MSELoss()
+        optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, momentum=0.9)
+        loss_data = []
+        loss_index = []
+
+        for epoch in range(epochs):
+            training_loss = 0.0
             for t, (xi, xv, y) in enumerate(loader_train):
                 xi = xi.to(device=self.device, dtype=torch.float)
                 xv = xv.to(device=self.device, dtype=torch.float)
                 y = y.to(device=self.device, dtype=torch.float)
 
                 total = model(xi, xv)
-                y.reshape(total.size())
+                y = y.reshape(total.size())
                 loss = loss_function(total, y)
+
+                # print("predicted value is: %.4f, label is %f" % (total, y))
+
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if t % 10 ==0:
-                    print('Iteration %d,loss = %.4f' % (t, loss.item()))
-                    # self.check_accuracy(loader_val,model)
+                training_loss += loss.item()
 
-    def check_accuracy(self, loader, model):
-        print('Checking accuracy on validation set')
-        # num_correct = 0
-        # num_samples = 0
-        error=0
-        model.eval()  # set model to evaluation mode
+                if t % 200 == 0:
+                    print('Epoch %d,loss = %.4f' % (epoch + 1, loss.item()))
+                    # self.check_accuracy(loader_val, model)
+            loss_index.append(epoch + 1)
+            loss_data.append(training_loss)
+
+        plt.title("The result of loss function optimization")
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.plot(loss_index, loss_data)
+        plt.show()
+
+    def validation(self, loader):
+        print("Now, it's validation time!")
+        model = self.eval()  # set model to evaluation mode
+        num_correct = 0
+        num_samples = 0
         with torch.no_grad():
             for xi, xv, y in loader:
                 xi = xi.to(device=self.device, dtype=torch.float)
                 xv = xv.to(device=self.device, dtype=torch.float)
                 y = y.to(device=self.device, dtype=torch.float)
 
+                # calculate predicted_y and get y value
+                # then compare if the error between them is smaller than 0.5
                 total = model(xi, xv)
+                y = y.reshape(total.size())
 
-                error += F.mse_loss(total,y)
+                num_samples += len(total)
+                for i in range(len(total)):
+                    val_error = abs(y[i] - total[i])
+                    if val_error < 0.5:
+                        num_correct += 1
 
-                # num_correct += preds.sum()
-                # print(preds)
-                # num_samples += preds.size()[0]
-            #                print("successful")
-            # acc = float(num_correct) / num_samples
-            # print('Got %d / %d correct (%.2f%%)' % (num_correct, num_samples, 100 * acc))
-            print("The summary of loss fuction error is %f" % error)
+        accuracy = float(num_correct) / num_samples
+        print("The accuracy of validation is %d / %d (%.2f%%)" % (num_correct,num_samples,100 * accuracy))
+
