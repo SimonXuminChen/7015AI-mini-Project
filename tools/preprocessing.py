@@ -84,14 +84,17 @@ class PreProcessData(Dataset):
             for j in range(0, self.feature_size[1]):
                 movie_dict[np.unique(movie_id)[j]] = j
 
-            with open("./feature.txt","w") as f:
-                for i, j,k in data[:, :3]:
-                    user_feature = int(user_dict[i])
-                    movie_feature = int(movie_dict[j])
-                    content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
-                    f.writelines(content)
-                    self.feature.append([user_feature,movie_feature])
-
+            # with open("./feature.txt","w") as f:
+            #     for i, j,k in data[:, :3]:
+            #         user_feature = int(user_dict[i])
+            #         movie_feature = int(movie_dict[j])
+            #         content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
+            #         f.writelines(content)
+            #         self.feature.append([user_feature,movie_feature])
+            for i, j,k in data[:, :3]:
+                user_feature = int(user_dict[i])
+                movie_feature = int(movie_dict[j])
+                self.feature.append([user_feature,movie_feature])
 
         else:
             data = np.loadtxt(filepath, skiprows=1, delimiter=",")
@@ -116,6 +119,9 @@ class PreProcessData(Dataset):
                     self.feature.append([user_feature,movie_feature])
 
     def __getitem__(self, index):
+        """
+        Xi is the features, also is the user_id and movie_id data, while Xv is de hidden vector
+        """
         self.feature = np.array(self.feature)
         item = self.feature[index,:]
         target =self.label[index]
@@ -125,42 +131,6 @@ class PreProcessData(Dataset):
 
     def __len__(self):
         return len(self.feature)
-
-class DictGenerator:
-    """
-    Generate dictionary for each of the categorical features
-    """
-
-    def __init__(self, num_feature):
-        self.dicts = []
-        self.num_feature = num_feature
-        for i in range(0, num_feature):
-            self.dicts.append(collections.defaultdict(int))
-
-    def build(self, datafile, categorial_features, cutoff=0):
-        with open(datafile, 'r') as f:
-            for line in f:
-                features = line.rstrip('\n').split('\t')
-                for i in range(0, self.num_feature):
-                    if features[categorial_features[i]] != '':
-                        self.dicts[i][features[categorial_features[i]]] += 1
-        for i in range(0, self.num_feature):
-            self.dicts[i] = filter(lambda x: x[1] >= cutoff,
-                                   self.dicts[i].items())
-            self.dicts[i] = sorted(self.dicts[i], key=lambda x: (-x[1], x[0]))
-            vocabs, _ = list(zip(*self.dicts[i]))
-            self.dicts[i] = dict(zip(vocabs, range(1, len(vocabs) + 1)))
-            self.dicts[i]['<unk>'] = 0
-
-    def gen(self, idx, key):
-        if key not in self.dicts[idx]:
-            res = self.dicts[idx]['<unk>']
-        else:
-            res = self.dicts[idx][key]
-        return res
-
-    def dicts_sizes(self):
-        return [len(self.dicts[idx]) for idx in range(0, self.num_feature)]
 
 
 
