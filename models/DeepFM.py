@@ -18,7 +18,7 @@ class DeepFM(nn.Module):
         self.hidden_dim = hidden_dims
         self.bias = torch.nn.Parameter(torch.randn(1))
         self.embedding_size = embedding_size
-        self.learning_rate = 0.5
+        self.learning_rate = 0.2
         self.bias = self.bias = torch.nn.Parameter(torch.randn(1))
         self.device = torch.device('cpu')
 
@@ -84,7 +84,6 @@ class DeepFM(nn.Module):
     def fit(self, loader_train,loader_val,epochs=1):
         model = self.train().to(device=self.device)
         loss_function = F.mse_loss
-
         optimizer = optim.SGD(self.parameters(), lr=self.learning_rate)
         for _ in range(2000):
             for t, (xi, xv, y) in enumerate(loader_train):
@@ -93,19 +92,20 @@ class DeepFM(nn.Module):
                 y = y.to(device=self.device, dtype=torch.float)
 
                 total = model(xi, xv)
-
+                y.reshape(total.size())
                 loss = loss_function(total, y)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
-                print('Iteration %d,loss = %.4f' % (t, loss.item()))
-                self.check_accuracy(loader_val,model)
+                if t % 10 ==0:
+                    print('Iteration %d,loss = %.4f' % (t, loss.item()))
+                    # self.check_accuracy(loader_val,model)
 
     def check_accuracy(self, loader, model):
         print('Checking accuracy on validation set')
-        num_correct = 0
-        num_samples = 0
+        # num_correct = 0
+        # num_samples = 0
+        error=0
         model.eval()  # set model to evaluation mode
         with torch.no_grad():
             for xi, xv, y in loader:
@@ -115,11 +115,12 @@ class DeepFM(nn.Module):
 
                 total = model(xi, xv)
 
-                preds = (F.mse_loss(total,y) < 0.5).to(dtype=torch.float)
+                error += F.mse_loss(total,y)
 
-                num_correct += preds.sum()
-                print(preds)
-                num_samples += preds.size()
+                # num_correct += preds.sum()
+                # print(preds)
+                # num_samples += preds.size()[0]
             #                print("successful")
-            acc = float(num_correct) / num_samples
-            print('Got %d / %d correct (%.2f%%)' % (num_correct, num_samples, 100 * acc))
+            # acc = float(num_correct) / num_samples
+            # print('Got %d / %d correct (%.2f%%)' % (num_correct, num_samples, 100 * acc))
+            print("The summary of loss fuction error is %f" % error)
