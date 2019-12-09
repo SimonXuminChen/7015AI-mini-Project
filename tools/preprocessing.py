@@ -63,60 +63,40 @@ def outlier_detect(list, min=0., max=5.):
 
 
 class PreProcessData(Dataset):
-    def __init__(self, filepath, train):
+    def __init__(self, filepath, train,is_print=False):
         self.feature_size = []
         self.feature=[]
         self.train = train
 
-        if self.train:
-            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
-            user_id = torch.from_numpy(data[:, 0])
-            movie_id = torch.from_numpy(data[:, 1])
-            self.label = torch.from_numpy(data[:, [2]])
-            self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
-            user_dict = {}
-            movie_dict = {}
+        data = np.loadtxt(filepath, skiprows=1, delimiter=",")
+        user_id = torch.from_numpy(data[:, 0])
+        movie_id = torch.from_numpy(data[:, 1])
+        self.label = torch.from_numpy(data[:, [2]])
+        self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
+        user_dict = {}
+        movie_dict = {}
 
 
-            for i in range(0, self.feature_size[0]):
-                user_dict[np.unique(user_id)[i]] = i
+        for i in range(0, self.feature_size[0]):
+            user_dict[np.unique(user_id)[i]] = i
 
-            for j in range(0, self.feature_size[1]):
-                movie_dict[np.unique(movie_id)[j]] = j
+        for j in range(0, self.feature_size[1]):
+            movie_dict[np.unique(movie_id)[j]] = j
 
-            # with open("./feature.txt","w") as f:
-            #     for i, j,k in data[:, :3]:
-            #         user_feature = int(user_dict[i])
-            #         movie_feature = int(movie_dict[j])
-            #         content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
-            #         f.writelines(content)
-            #         self.feature.append([user_feature,movie_feature])
+        if is_print:
+            with open("./feature.txt","w") as f:
+                for i, j,k in data[:, :3]:
+                    user_feature = int(user_dict[i])
+                    movie_feature = int(movie_dict[j])
+                    content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
+                    f.writelines(content)
+                    self.feature.append([user_feature,movie_feature])
+        else:
             for i, j,k in data[:, :3]:
                 user_feature = int(user_dict[i])
                 movie_feature = int(movie_dict[j])
                 self.feature.append([user_feature,movie_feature])
 
-        else:
-            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
-            user_id = data[:, 0]
-            movie_id = data[:, 1]
-            self.label = data[:, 2]
-            self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
-            user_dict = {}
-            movie_dict = {}
-
-            for i in range(0, self.feature_size[0]):
-                user_dict[np.unique(user_id)[i]] = i
-
-            for j in range(0, self.feature_size[1]):
-                movie_dict[np.unique(movie_id)[j]] = j
-
-            with open("./feature.txt","w") as f:
-                for i, j in data[:, :3]:
-                    user_feature = int(user_dict[i])
-                    movie_feature = int(movie_dict[j])
-                    f.writelines(user_feature,movie_feature)
-                    self.feature.append([user_feature,movie_feature])
 
     def __getitem__(self, index):
         """
@@ -127,6 +107,8 @@ class PreProcessData(Dataset):
         target =self.label[index]
         Xi = torch.from_numpy(item.astype(np.int32)).unsqueeze(-1)
         Xv = torch.from_numpy(np.ones_like(item))
+        # print(Xv)
+
         return Xi,Xv,target
 
     def __len__(self):
