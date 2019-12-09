@@ -17,10 +17,9 @@ class DeepFM(nn.Module):
             feature_sizes)  # according to the dataset, we know the field include user id, movie id,timestamp
         self.feature_sizes = feature_sizes  # constain data size due to the mini project
         self.hidden_dim = hidden_dims
-        self.bias = torch.nn.Parameter(torch.randn(1))
+        self.bias = nn.Parameter(torch.randn(1))
         self.embedding_size = embedding_size
         self.learning_rate = 0.001
-        self.bias = self.bias = torch.nn.Parameter(torch.randn(1))
         self.device = torch.device('cpu')
 
         # initial fm model part
@@ -80,7 +79,7 @@ class DeepFM(nn.Module):
 
     def fit(self, loader_train, epochs=1):
         model = self.train().to(device=self.device)
-        loss_function = nn.MSELoss()
+        loss_function = F.mse_loss
         optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, momentum=0.9)
         loss_data = []
         loss_index = []
@@ -109,7 +108,7 @@ class DeepFM(nn.Module):
             loss_index.append(epoch + 1)
             loss_data.append(training_loss)
 
-        plt.title("The result of loss function optimization")
+        plt.title("The result of loss function optimization(DeepFm)")
         plt.xlabel("epoch")
         plt.ylabel("loss")
         plt.plot(loss_index, loss_data)
