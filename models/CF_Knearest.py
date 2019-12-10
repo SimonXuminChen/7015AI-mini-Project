@@ -1,3 +1,13 @@
+
+#  -*- coding: utf-8 -*-
+'''
+===================================================
+@Time    : 2019/12/10  4:56 下午
+@Author  : Dai
+@IDE     : PyCharm
+===================================================
+'''
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,9 +25,11 @@ class CF_knearest(nn.Module):
         self.n_movie = data[:,1]
         self.simi_mat = self.cal_simi_mat(data)
 
+        return
 
-    def forward(self,data):
-        pass
+    def forward(self,user_id,movie_id,):
+        self.cal_similarity()
+
 
     def cal_similarity(self, i, j, data):
         # 把目标用户i和j的矩阵和看过的电影放到新的矩阵中
@@ -27,28 +39,33 @@ class CF_knearest(nn.Module):
 
         for x  in range(len(data)):
             if data[x][0] == i:
-                users_real1.append(data[x][,1:])
+                users_real1.append(data[x][1])
             if data[x][0] == j:
-                users_real2.append(data[x][,1:])
+                np.append(users_real2, data[x][1], axis=None)
 
-
-
-        if self.criterion == 'pearson':
-            similarity = np.corrcoef(users_real1, users_real2)[0, 1]
+        if len(users_real1) == 0:
+            if len(users_real2)==0:
+                similarity = 0
         else:
-            if np.std(users_real1) > 1e-3:  # 方差过大，表明用户间评价尺度差别大需要进行调整
-                users_real1 = users_real1 - users_real1.mean()
-            if np.std(users_real2) > 1e-3:
-                users_real2 = users_real2 - users_real2.mean()
-            similarity = (users_real1 @ users_real2) / np.linalg.norm(users_real1, 2) / np.linalg.norm(users_real2, 2)
-        # 如果使用余弦相似度不ok,就换成pearson相关系数来计算相似度
-
+            v1 = users_real1[0,:]
+            v2 = users_real2[0,:]
+            if self.criterion == 'cosine':
+                if np.std(v1) > 1e-3:  # 方差过大，表明用户间评价尺度差别大需要进行调整
+                    v1 = v1 - v1.mean()
+                if np.std(v2) > 1e-3:
+                    v2 = v2 - v2.mean()
+                similarity = (v1 @ v2) / np.linalg.norm(v1, 2) / np.linalg.norm(v2, 2)
+            # 如果使用余弦相似度不ok,就换成pearson相关系数来计算相似度
+            elif self.criterion == 'pearson':
+                similarity = np.corrcoef(v1, v2)[0, 1]
+            else:
+                raise ValueError('the method is not supported now')
 
         return similarity
 
     def cal_simi_mat(self, data):
-        # 计算用户间的相似度矩阵
-        simi_mat = np.zeros((self.n_user, self.n_user))
+        simi_mat = np.ones((self.n_user, self.n_user))
+
         for i in range(self.n_user):
             for j in range(i + 1, self.n_user):
                 simi_mat[i, j] = self.cal_similarity(i, j, data)

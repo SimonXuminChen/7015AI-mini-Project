@@ -11,7 +11,7 @@ import logging
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset,DataLoader,TensorDataset
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 import random
 
 
@@ -62,13 +62,12 @@ def outlier_detect(list, min=0., max=5.):
 
 
 class PreProcessData(Dataset):
-    def __init__(self, filepath, train):
+    def __init__(self, filepath, one_hot=True, is_print=False):
         self.feature_size = []
-        self.feature=[]
-        self.train = train
+        self.feature = []
 
-        if self.train:
-            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
+        data = np.loadtxt(filepath, skiprows=1, delimiter=",")
+        if one_hot:
             user_id = torch.from_numpy(data[:, 0])
             movie_id = torch.from_numpy(data[:, 1])
             self.label = torch.from_numpy(data[:, [2]])
@@ -76,93 +75,43 @@ class PreProcessData(Dataset):
             user_dict = {}
             movie_dict = {}
 
-
             for i in range(0, self.feature_size[0]):
                 user_dict[np.unique(user_id)[i]] = i
 
             for j in range(0, self.feature_size[1]):
                 movie_dict[np.unique(movie_id)[j]] = j
 
-            with open("./feature.txt","w") as f:
-                for i, j,k in data[:, :3]:
+            if is_print:
+                with open("./feature.txt", "w") as f:
+                    for i, j, k in data[:, :3]:
+                        user_feature = int(user_dict[i])
+                        movie_feature = int(movie_dict[j])
+                        content = str(user_feature) + "," + str(movie_feature) + "," + str(k) + "\n"
+                        f.writelines(content)
+                        self.feature.append([user_feature, movie_feature])
+            else:
+                for i, j, k in data[:, :3]:
                     user_feature = int(user_dict[i])
                     movie_feature = int(movie_dict[j])
-                    content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
-                    f.writelines(content)
-                    self.feature.append([user_feature,movie_feature])
-
+                    self.feature.append([user_feature, movie_feature])
 
         else:
-            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
-            user_id = data[:, 0]
-            movie_id = data[:, 1]
-            self.label = data[:, 2]
-            self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
-            user_dict = {}
-            movie_dict = {}
-
-            for i in range(0, self.feature_size[0]):
-                user_dict[np.unique(user_id)[i]] = i
-
-            for j in range(0, self.feature_size[1]):
-                movie_dict[np.unique(movie_id)[j]] = j
-
-            with open("./feature.txt","w") as f:
-                for i, j in data[:, :3]:
-                    user_feature = int(user_dict[i])
-                    movie_feature = int(movie_dict[j])
-                    f.writelines(user_feature,movie_feature)
-                    self.feature.append([user_feature,movie_feature])
+            self.feature = torch.from_numpy(data[:, :3])
+            # for i, j, k in dataset[:, :3]:
+            #     self.feature.append([i,j,k])
 
     def __getitem__(self, index):
+        """
+        Xi is the features, also is the user_id and movie_id data, while Xv is de hidden vector
+        """
         self.feature = np.array(self.feature)
-        item = self.feature[index,:]
-        target =self.label[index]
+        item = self.feature[index, :]
+        target = self.label[index]
         Xi = torch.from_numpy(item.astype(np.int32)).unsqueeze(-1)
         Xv = torch.from_numpy(np.ones_like(item))
-        return Xi,Xv,target
+        # print(Xv)
+
+        return Xi, Xv, target
 
     def __len__(self):
         return len(self.feature)
-
-class DictGenerator:
-    """
-    Generate dictionary for each of the categorical features
-    """
-
-    def __init__(self, num_feature):
-        self.dicts = []
-        self.num_feature = num_feature
-        for i in range(0, num_feature):
-            self.dicts.append(collections.defaultdict(int))
-
-    def build(self, datafile, categorial_features, cutoff=0):
-        with open(datafile, 'r') as f:
-            for line in f:
-                features = line.rstrip('\n').split('\t')
-                for i in range(0, self.num_feature):
-                    if features[categorial_features[i]] != '':
-                        self.dicts[i][features[categorial_features[i]]] += 1
-        for i in range(0, self.num_feature):
-            self.dicts[i] = filter(lambda x: x[1] >= cutoff,
-                                   self.dicts[i].items())
-            self.dicts[i] = sorted(self.dicts[i], key=lambda x: (-x[1], x[0]))
-            vocabs, _ = list(zip(*self.dicts[i]))
-            self.dicts[i] = dict(zip(vocabs, range(1, len(vocabs) + 1)))
-            self.dicts[i]['<unk>'] = 0
-
-    def gen(self, idx, key):
-        if key not in self.dicts[idx]:
-            res = self.dicts[idx]['<unk>']
-        else:
-            res = self.dicts[idx][key]
-        return res
-
-    def dicts_sizes(self):
-        return [len(self.dicts[idx]) for idx in range(0, self.num_feature)]
-
-
-
-if __name__ == "__main__":
-    test = PreProcessData("../data/ratings_small.csv", train=True)
-    print(test.feature_size)

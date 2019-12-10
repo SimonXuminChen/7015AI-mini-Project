@@ -1,103 +1,82 @@
+# -*- coding: utf-8 -*-
 import numpy as np
-import time
-import sys
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
-sys.path.append("..")
-from tools import preprocessing
-
-np.seterr(divide='ignore',invalid='ignore')
-
-def load_data(filename):
-    data = open(filename)
-    feature = []
-    label = []
-    for line in data.readlines():
-        feature_tmp = []
-        lines = preprocessing.outlier_detect(line.strip().split(','))
-        if len(lines) == 0:
-            continue
-        for x in range(len(lines) - 2):
-            feature_tmp.append(float(lines[x]))
-        label.append(float(lines[-2])*2)
-        feature.append(feature_tmp)
-    data.close()
-    return feature, label
+import matplotlib.pyplot as plt
 
 
-def constructDataSet(feature):
-    return np.mat(feature)
+class FM(nn.Module):
+    def __init__(self, feature_sizes, k_size=5):
+        super(FM, self).__init__()
+        self.feature_sizes = feature_sizes
+        self.total_dim = int(feature_sizes[0]) + int(feature_sizes[1])  # total dims
+        self.k_size = k_size
+        self.learning_rate = 0.00000000000000001
+        self.device = "cpu"
+        # self.linear = nn.Linear(100, 1)
+        self.w = torch.randn((len(feature_sizes), 1),requires_grad=True)
+        self.w0 = 0.
+        self.v = nn.Parameter(torch.ones((len(feature_sizes),1),requires_grad=True))
 
+    def forward(self, Xi):
+        # linear_part = self.linear(xi)
+        # # 矩阵相乘 (batch*p) * (p*k)
+        # inter_part1 = torch.mm(xi, xv.t())  # out_size = (batch, k)
+        # # 矩阵相乘 (batch*p)^2 * (p*k)^2
+        # inter_part2 = torch.mm(torch.pow(xi, 2), torch.pow(xv, 2).t())  # out_size = (batch, k)
+        # output = linear_part + 0.5 * torch.sum(torch.pow(inter_part1, 2) - inter_part2)
+        # # 这里torch求和一定要用sum
+        if Xi.size()[-1] == 1:
+            Xi = Xi.view((Xi.size()[0], Xi.size()[1]))
+        m, n = Xi.size()  # 矩阵的行列数，即样本数和特征数
+        # 初始化参数
+        # w = random.randn(n, 1)#其中n是特征的个数
+        inter_1 = torch.mm(Xi,self.v.t())  # *表示矩阵的点乘
+        inter_2 = torch.mm(torch.pow(Xi, 2), torch.pow(self.v, 2).t())  # 二阶交叉项的计算
+        interaction = torch.sum(torch.pow(inter_1, 2) - inter_2) * 0.5  # 二阶交叉项计算完成
 
-# loss function - MSE
-def loss_function(label, y_hat):
-    mse = np.square(label - y_hat).mean()
-    return mse
+        result = self.w0 + torch.sum(torch.mm(Xi,self.w.t())) + interaction
 
+        return result  # out_size = (batch, 1)
 
-def initialize_w_v(n, k):
-    w = np.ones((n, 1))
-    v = np.mat(np.zeros((n, k)))
-    for i in range(n):
-        for j in range(k):
-            v[i, j] = np.random.normal(0, 0.2)
-    return w, v
+    def fit(self, loader, epochs=1):
+        model = self.train().to(device=self.device)
+        loss_function = F.mse_loss
+        optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, momentum=0.9)
+        loss_data = []
+        loss_index = []
 
+        for epoch in range(epochs):
+            training_loss = 0.0
+            for t, (xi, xv, y) in enumerate(loader):
+                xi = xi.to(device=self.device, dtype=torch.float)
+                _ = xv.to(device=self.device, dtype=torch.float)
+                # print(y)
+                y = y.to(device=self.device, dtype=torch.float)
 
-def SGD(dataMatrix, classLabels, k, max_iter, learning_rate):
-    m, n = np.shape(dataMatrix)
-    w0 = 0
-    w, v = initialize_w_v(n, k)
-    print("start iteration")
-    for it in range(max_iter):
-        for x in range(m):
-            v_1 = dataMatrix[x] * v  # x*v
-            v_2 = np.multiply(dataMatrix[x], dataMatrix[x]) * np.multiply(v, v)  # v^2*x^2
-            interaction = 0.5 * np.sum(np.multiply(v_1, v_1) - v_2)
+                for i in range(len(xi)):
 
-            p = w0 + dataMatrix[x] * w + interaction
-            loss = loss_function(classLabels[x], p)
-            w0 = w0 - learning_rate * loss * classLabels[x]
-            for i in range(n):
-                if dataMatrix[x, i] != 0:
-                    w[i, 0] = w[i, 0] - learning_rate * loss * classLabels[x] * dataMatrix[x, i]
-                    for j in range(k):
-                        v[i, j] = v[i, j] - learning_rate * loss * classLabels[x] * (
-                                    dataMatrix[x, i] * v_1[0, j] - v[i, j] * dataMatrix[x, i] * dataMatrix[x, i])
+                    total = model(xi[i])
+                    loss = torch.sqrt(loss_function(total, y[i]))
 
-    return w0, w, v
+                    # print("predicted value is: %.4f, label is %f" % (total, y))
 
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    training_loss += loss.item()
 
-def getAccuracy(w0, w, v):
-    feature, labels = load_data("./ratings.csv")
-    dataMatrix = np.mat(feature)
-    m, n = np.shape(dataMatrix)
-    allItem = 0
-    error = 0
-    result = []
+                if t % 200 == 0:
+                    print('Epoch %d,loss = %.4f' % (epoch + 1, loss.item()))
+                    # self.check_accuracy(loader_val, model)
+            loss_index.append(epoch + 1)
+            loss_data.append(training_loss)
 
-    for x in range(m):
-        allItem += 1
-        v_1 = dataMatrix[x] * v  # x*v
-        v_2 = np.multiply(dataMatrix[x], dataMatrix[x]) * np.multiply(v, v)  # v^2*x^2
-        interaction = 0.5 * np.sum(np.multiply(v_1, v_1) - v_2)
-
-        p = w0 + dataMatrix[x] * w + interaction
-        loss = loss_function(labels[x], p)
-        result.append(loss)
-
-        if loss == 0:
-            continue
-        else:
-            error += 1
-    print(result)
-    return float(error)/allItem
-
-
-
-start_training_time = time.time()
-feature, label = load_data("../data/ratings_small.csv")
-matrix = np.mat(feature)
-w0, w, v = SGD(matrix, label, 10, 200, 0.3)
-stop_training_time = time.time()
-print("training time is %s"%(stop_training_time-start_training_time))
-# print("\nAccuracy is %f"%(1-getAccuracy(w0,w,v)))
+        plt.title("The result of loss function optimization(FM)")
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.plot(loss_index, loss_data)
+        plt.show()
