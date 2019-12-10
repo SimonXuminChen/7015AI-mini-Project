@@ -14,11 +14,15 @@ from tools.preprocessing import PreProcessData,load_data
 from models.DeepFM import DeepFM
 
 from models.fm import FM
+from models.CF_Knearest import CF_knearest
 
 TRAIN_ROUND = 10000
 
 # load data
-# train_data = PreProcessData("./data/ratings_small.csv")
+train_data = PreProcessData("./data/ratings_small.csv",one_hot=False)
+dataset = train_data.feature
+model =CF_knearest(dataset)
+print(model)
 # loader_train = DataLoader(train_data, batch_size=50,
 #                           sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND)))
 # val_data = PreProcessData("./data/ratings_small.csv", train=True)
