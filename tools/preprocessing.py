@@ -6,13 +6,14 @@
 @IDE     : PyCharm
 ===================================================
 '''
+import collections
 import logging
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset,DataLoader,TensorDataset
+import random
 
-continous_features = 13
 
 def load_data(filename):
     data = open(filename)
@@ -62,45 +63,106 @@ def outlier_detect(list, min=0., max=5.):
 
 class PreProcessData(Dataset):
     def __init__(self, filepath, train):
-        self.feature = []
-        self.label = []
+        self.feature_size = []
+        self.feature=[]
         self.train = train
 
         if self.train:
-            data = pd.read_csv(filepath)
-            self.train_data = data.iloc[:, :-2].values
-            self.target = data.iloc[:, -2].values
+            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
+            user_id = torch.from_numpy(data[:, 0])
+            movie_id = torch.from_numpy(data[:, 1])
+            self.label = torch.from_numpy(data[:, [2]])
+            self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
+            user_dict = {}
+            movie_dict = {}
+
+
+            for i in range(0, self.feature_size[0]):
+                user_dict[np.unique(user_id)[i]] = i
+
+            for j in range(0, self.feature_size[1]):
+                movie_dict[np.unique(movie_id)[j]] = j
+
+            with open("./feature.txt","w") as f:
+                for i, j,k in data[:, :3]:
+                    user_feature = int(user_dict[i])
+                    movie_feature = int(movie_dict[j])
+                    content = str(user_feature)+","+str(movie_feature)+","+str(k)+"\n"
+                    f.writelines(content)
+                    self.feature.append([user_feature,movie_feature])
+
 
         else:
-            data = pd.read_csv(filepath)
-            self.test_data = data.iloc[:, :-2].values
+            data = np.loadtxt(filepath, skiprows=1, delimiter=",")
+            user_id = data[:, 0]
+            movie_id = data[:, 1]
+            self.label = data[:, 2]
+            self.feature_size = [len(np.unique(user_id)), len(np.unique(movie_id))]
+            user_dict = {}
+            movie_dict = {}
+
+            for i in range(0, self.feature_size[0]):
+                user_dict[np.unique(user_id)[i]] = i
+
+            for j in range(0, self.feature_size[1]):
+                movie_dict[np.unique(movie_id)[j]] = j
+
+            with open("./feature.txt","w") as f:
+                for i, j in data[:, :3]:
+                    user_feature = int(user_dict[i])
+                    movie_feature = int(movie_dict[j])
+                    f.writelines(user_feature,movie_feature)
+                    self.feature.append([user_feature,movie_feature])
 
     def __getitem__(self, index):
-        if self.train:
-            data_index, target_index = self.train_data[index, :], self.target[index]
-
-            Xi_coutinous = np.zeros_like(data_index[:continous_features])
-            Xi_categorial = data_index[continous_features:]
-            Xi = torch.from_numpy(np.concatenate((Xi_coutinous, Xi_categorial)).astype(np.int32)).unsqueeze(-1)
-
-            Xv_categorial = np.ones_like(data_index[continous_features:])
-            Xv_coutinous = data_index[:continous_features]
-            Xv = torch.from_numpy(np.concatenate((Xv_coutinous, Xv_categorial)).astype(np.int32))
-            return Xi, Xv, target_index
-        else:
-            data_index = self.train_data[index, :]
-
-            Xi_coutinous = np.zeros_like(data_index[:continous_features])
-            Xi_categorial = data_index[continous_features:]
-            Xi = torch.from_numpy(np.concatenate((Xi_coutinous, Xi_categorial)).astype(np.int32)).unsqueeze(-1)
-
-            Xv_categorial = np.ones_like(data_index[continous_features:])
-            Xv_coutinous = data_index[:continous_features]
-            Xv = torch.from_numpy(np.concatenate((Xv_coutinous, Xv_categorial)).astype(np.int32))
-            return Xi, Xv
+        self.feature = np.array(self.feature)
+        item = self.feature[index,:]
+        target =self.label[index]
+        Xi = torch.from_numpy(item.astype(np.int32)).unsqueeze(-1)
+        Xv = torch.from_numpy(np.ones_like(item))
+        return Xi,Xv,target
 
     def __len__(self):
-        if self.train:
-            return len(self.train_data)
+        return len(self.feature)
+
+class DictGenerator:
+    """
+    Generate dictionary for each of the categorical features
+    """
+
+    def __init__(self, num_feature):
+        self.dicts = []
+        self.num_feature = num_feature
+        for i in range(0, num_feature):
+            self.dicts.append(collections.defaultdict(int))
+
+    def build(self, datafile, categorial_features, cutoff=0):
+        with open(datafile, 'r') as f:
+            for line in f:
+                features = line.rstrip('\n').split('\t')
+                for i in range(0, self.num_feature):
+                    if features[categorial_features[i]] != '':
+                        self.dicts[i][features[categorial_features[i]]] += 1
+        for i in range(0, self.num_feature):
+            self.dicts[i] = filter(lambda x: x[1] >= cutoff,
+                                   self.dicts[i].items())
+            self.dicts[i] = sorted(self.dicts[i], key=lambda x: (-x[1], x[0]))
+            vocabs, _ = list(zip(*self.dicts[i]))
+            self.dicts[i] = dict(zip(vocabs, range(1, len(vocabs) + 1)))
+            self.dicts[i]['<unk>'] = 0
+
+    def gen(self, idx, key):
+        if key not in self.dicts[idx]:
+            res = self.dicts[idx]['<unk>']
         else:
-            return len(self.test_data)
+            res = self.dicts[idx][key]
+        return res
+
+    def dicts_sizes(self):
+        return [len(self.dicts[idx]) for idx in range(0, self.num_feature)]
+
+
+
+if __name__ == "__main__":
+    test = PreProcessData("../data/ratings_small.csv", train=True)
+    print(test.feature_size)
