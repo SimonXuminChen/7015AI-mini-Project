@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import matplotlib.pyplot as plt
-from time import time
 
 
 class DeepFM(nn.Module):
@@ -19,7 +18,7 @@ class DeepFM(nn.Module):
         self.hidden_dim = hidden_dims
         self.bias = nn.Parameter(torch.randn(1))
         self.embedding_size = embedding_size
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         self.device = torch.device('cpu')
 
         # initial fm model part
@@ -84,30 +83,36 @@ class DeepFM(nn.Module):
         loss_data = []
         loss_index = []
 
-        for epoch in range(epochs):
-            training_loss = 0.0
-            for t, (xi, xv, y) in enumerate(loader_train):
-                xi = xi.to(device=self.device, dtype=torch.float)
-                xv = xv.to(device=self.device, dtype=torch.float)
-                y = y.to(device=self.device, dtype=torch.float)
+        with open("deepFM_training_data.csv","w") as f:
+            for epoch in range(epochs):
+                training_loss = 0.0
+                for t, (xi, xv, y) in enumerate(loader_train):
+                    xi = xi.to(device=self.device, dtype=torch.float)
+                    xv = xv.to(device=self.device, dtype=torch.float)
+                    y = y.to(device=self.device, dtype=torch.float)*2
 
-                total = model(xi, xv)
-                y = y.reshape(total.size())
-                loss = loss_function(total, y)
+                    total = model(xi, xv)
+                    y = y.reshape(total.size())
+                    loss = torch.sqrt(loss_function(total, y))
+                    for i in range(len(total)):
+                        error = torch.abs(y[i]-total[i])
+                        content = str(int(xi[i][0]))+","+str(int(xi[i][1]))+","+str(int(y[i]))+","+str(int(total[i]))+","+str(int(error))+"\n"
+                        f.writelines(content)
 
-                # print("predicted value is: %.4f, label is %f" % (total, y))
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                training_loss += loss.item()
+                    # print("predicted value is: %.4f, label is %f" % (total, y))
 
-                if t % 200 == 0:
-                    print('Epoch %d,loss = %.4f' % (epoch + 1, loss.item()))
-                    # self.check_accuracy(loader_val, model)
-            loss_index.append(epoch + 1)
-            loss_data.append(training_loss)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    training_loss += loss.item()
 
+                    if t % 200 == 0:
+                        print('Epoch %d,loss = %.4f' % (epoch + 1, loss.item()))
+                        # self.check_accuracy(loader_val, model)
+                loss_index.append(epoch + 1)
+                loss_data.append(training_loss)
+        # f.()
         plt.title("The result of loss function optimization(DeepFm)")
         plt.xlabel("epoch")
         plt.ylabel("loss")

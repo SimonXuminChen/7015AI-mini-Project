@@ -14,7 +14,7 @@ class FM(nn.Module):
         self.feature_sizes = feature_sizes
         self.total_dim = int(feature_sizes[0]) + int(feature_sizes[1])  # total dims
         self.k_size = k_size
-        self.learning_rate = 0.000000001
+        self.learning_rate = 0.00000000000000001
         self.device = "cpu"
         # self.linear = nn.Linear(100, 1)
         self.w = torch.randn((len(feature_sizes), 1),requires_grad=True)
@@ -60,7 +60,7 @@ class FM(nn.Module):
                 for i in range(len(xi)):
 
                     total = model(xi[i])
-                    loss = loss_function(total, y[i])
+                    loss = torch.sqrt(loss_function(total, y[i]))
 
                     # print("predicted value is: %.4f, label is %f" % (total, y))
 
