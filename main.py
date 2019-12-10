@@ -10,8 +10,9 @@ import time
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler
 
-from tools.preprocessing import PreProcessData
+from tools.preprocessing import PreProcessData,load_data
 from models.DeepFM import DeepFM
+
 from models.fm import FM
 
 TRAIN_ROUND = 10000
@@ -42,3 +43,4 @@ TRAIN_ROUND = 10000
 # FM_model.fit(loader_train,epochs=50)
 # FM_end_time=time.time()
 # print("the end of training FM, time consume: %d" % (FM_end_time-FM_start_time))
+

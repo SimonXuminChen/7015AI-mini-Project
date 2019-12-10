@@ -1,3 +1,4 @@
+
 #  -*- coding: utf-8 -*-
 '''
 ===================================================
@@ -6,6 +7,7 @@
 @IDE     : PyCharm
 ===================================================
 '''
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,10 +24,12 @@ class CF_knearest(nn.Module):
         self.n_user = data[:,0]
         self.n_movie = data[:,1]
         self.simi_mat = self.cal_simi_mat(data)
+
         return
 
     def forward(self,user_id,movie_id,):
         self.cal_similarity()
+
 
     def cal_similarity(self, i, j, data):
         # 把目标用户i和j的矩阵和看过的电影放到新的矩阵中
@@ -56,11 +60,12 @@ class CF_knearest(nn.Module):
                 similarity = np.corrcoef(v1, v2)[0, 1]
             else:
                 raise ValueError('the method is not supported now')
+
         return similarity
 
     def cal_simi_mat(self, data):
-        # 计算用户间的相似度矩阵
         simi_mat = np.ones((self.n_user, self.n_user))
+
         for i in range(self.n_user):
             for j in range(i + 1, self.n_user):
                 simi_mat[i, j] = self.cal_similarity(i, j, data)

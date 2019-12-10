@@ -124,6 +124,7 @@ class DeepFM(nn.Module):
         model = self.eval()  # set model to evaluation mode
         num_correct = 0
         num_samples = 0
+
         with torch.no_grad():
             for xi, xv, y in loader:
                 xi = xi.to(device=self.device, dtype=torch.float)
