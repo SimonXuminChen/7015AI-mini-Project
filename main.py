@@ -17,23 +17,23 @@ from models.fm import FM
 TRAIN_ROUND = 10000
 
 # load data
-train_data = PreProcessData("./data/ratings_small.csv", train=True)
-loader_train = DataLoader(train_data, batch_size=50,
-                          sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND)))
-val_data = PreProcessData("./data/ratings_small.csv", train=True)
-loader_val = DataLoader(train_data, batch_size=50, sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND, 100000)))
-
-feature_size = train_data.feature_size
-print("feature_size is " + str(feature_size))
-
-
-# deepFM
-deepFM_start_time=time.time()
-deepFM_model = DeepFM(feature_sizes=feature_size)
-print("Now, lets train the model")
-deepFM_model.fit(loader_train,epochs=50)
-deepFM_end_time=time.time()
-print("the end of training deefFM, time consume: %d" % (deepFM_end_time-deepFM_start_time))
+# train_data = PreProcessData("./data/ratings_small.csv")
+# loader_train = DataLoader(train_data, batch_size=50,
+#                           sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND)))
+# val_data = PreProcessData("./data/ratings_small.csv", train=True)
+# loader_val = DataLoader(train_data, batch_size=50, sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND, 100000)))
+#
+# feature_size = train_data.feature_size
+# print("feature_size is " + str(feature_size))
+#
+#
+# # deepFM
+# deepFM_start_time=time.time()
+# deepFM_model = DeepFM(feature_sizes=feature_size)
+# print("Now, lets train the model")
+# deepFM_model.fit(loader_train,epochs=50)
+# deepFM_end_time=time.time()
+# print("the end of training deefFM, time consume: %d" % (deepFM_end_time-deepFM_start_time))
 
 # # FM
 # FM_start_time=time.time()
