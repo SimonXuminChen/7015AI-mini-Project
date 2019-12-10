@@ -28,17 +28,17 @@ print("feature_size is " + str(feature_size))
 
 
 # deepFM
-# deepFM_start_time=time.time()
-# deepFM_model = DeepFM(feature_sizes=feature_size)
-# print("Now, lets train the model")
-# deepFM_model.fit(loader_train,epochs=50)
-# deepFM_end_time=time.time()
-# print("the end of training deefFM, time consume: %d" % (deepFM_end_time-deepFM_start_time))
-
-# FM
-FM_start_time=time.time()
-FM_model = FM(feature_sizes=feature_size)
+deepFM_start_time=time.time()
+deepFM_model = DeepFM(feature_sizes=feature_size)
 print("Now, lets train the model")
-FM_model.fit(loader_train,epochs=50)
-FM_end_time=time.time()
-print("the end of training FM, time consume: %d" % (FM_end_time-FM_start_time))
+deepFM_model.fit(loader_train,epochs=50)
+deepFM_end_time=time.time()
+print("the end of training deefFM, time consume: %d" % (deepFM_end_time-deepFM_start_time))
+
+# # FM
+# FM_start_time=time.time()
+# FM_model = FM(feature_sizes=feature_size)
+# print("Now, lets train the model")
+# FM_model.fit(loader_train,epochs=50)
+# FM_end_time=time.time()
+# print("the end of training FM, time consume: %d" % (FM_end_time-FM_start_time))
