@@ -9,6 +9,7 @@
 import time
 from torch.utils.data import DataLoader
 from torch.utils.data import sampler
+import numpy as np
 
 from tools.preprocessing import PreProcessData,load_data
 from models.DeepFM import DeepFM
@@ -20,9 +21,14 @@ TRAIN_ROUND = 10000
 
 # load data
 train_data = PreProcessData("./data/ratings_small.csv",one_hot=False)
+
 dataset = train_data.feature
 model =CF_knearest(dataset)
-print(model)
+print(model.simi_mat)
+# a=[2.0,3.0]
+# b=[2.0,4.5]
+# c=np.corrcoef(a,b)
+# print(c)
 # loader_train = DataLoader(train_data, batch_size=50,
 #                           sampler=sampler.SubsetRandomSampler(range(TRAIN_ROUND)))
 # val_data = PreProcessData("./data/ratings_small.csv", train=True)

@@ -57,12 +57,15 @@ class CF_knearest(nn.Module):
                         i_target.append(i[1])
                         j_target.append(j[1])
 
-        print(len(i_target),len(j_target))
+        if len(i_target)==1:
+            i_target.append(torch.tensor(1.0))
+            j_target.append(torch.tensor(1.0))
+        # print(len(i_target),len(j_target))
 
         # 加上判断->必须相同电影的评分，在上面添加新矩阵的方法中就提前写好
         # 电影评分->
         if len(i_target)==0:
-            similarity=0
+            similarity=-1
         else:
             if self.criterion == 'pearson':
                 result = np.corrcoef(i_target, j_target)
@@ -73,9 +76,9 @@ class CF_knearest(nn.Module):
                     users_real1 = users_real1 - users_real1.mean()
                 if np.std(users_real2) > 1e-3:
                     users_real2 = users_real2 - users_real2.mean()
-                similarity = (users_real1 @ users_real2) / np.linalg.norm(users_real1, 2) / np.linalg.norm(users_real2,
-                                                                                                           2)
-            # 如果使用余弦相似度不ok,就换成pearson相关系数来计算相似度
+                similarity = (users_real1 @ users_real2) / np.linalg.norm(users_real1, 2) / np.linalg.norm(users_real2,2)
+
+        # 如果使用余弦相似度不ok,就换成pearson相关系数来计算相似度
         #使用求出来相似度求方差
         # np.var(similarity[0, 1:], )
         # array_similiarity=similarity[0,1:].A
@@ -91,7 +94,7 @@ class CF_knearest(nn.Module):
             for j in range(i + 1, self.n_user):
                 simi_mat[i, j] = self.cal_similarity(i+1, j+1, data)
                 simi_mat[j, i] = simi_mat[i, j]
-                print(i,j,simi_mat[i, j])
+                # print(i,j,simi_mat[i, j])
         return simi_mat
 
     def predict_score(self,data,target_user,target_movie,sil_matrix,target_itemk=6):
