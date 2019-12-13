@@ -24,6 +24,7 @@ class CF_knearest(nn.Module):
         self.n_user = len(torch.unique(data[:,0]))
         self.n_movie = len(torch.unique(data[:,1]))
         self.simi_mat = self.cal_simi_mat(data)
+        # self.score=self.predict_score(data,1,5)
 
 
     def forward(self,user_id,movie_id,):
@@ -60,9 +61,7 @@ class CF_knearest(nn.Module):
         if len(i_target)==1:
             i_target.append(torch.tensor(1.0))
             j_target.append(torch.tensor(1.0))
-        # print(len(i_target),len(j_target))
 
-        # 加上判断->必须相同电影的评分，在上面添加新矩阵的方法中就提前写好
         # 电影评分->
         if len(i_target)==0:
             similarity=-1
@@ -97,31 +96,43 @@ class CF_knearest(nn.Module):
                 # print(i,j,simi_mat[i, j])
         return simi_mat
 
-    def predict_score(self,data,target_user,target_movie,sil_matrix,target_itemk=6):
-
-        # 获取目标用户在相似度矩阵重的所有行，也就是目标用户和其他所有用户之间的  相似度
-        similarity_target_user=sil_matrix[target_user,:]
-        # topk=similarity_target_user.sort_values('similarity',ascending=False)[1:target_itemk+1]
-        new_array=similarity_target_user.A
-        # 把similarity_target_user换成array数组，再用np.argmax
+    # sil_matrix shoule be model.simi_mat
+    def predict_score(self,data,target_user,target_movie,target_itemk=6):
+        similarity_target_user=self.simi_mat[target_user,:]
+        new_array = similarity_target_user
         # 这是空索引数组
-        index = np.empty([target_itemk], dtype=int)
-
+        index = np.empty([target_itemk+1], dtype=int)
         #获取最大值处的所在位置,放到数组index里面,再把当前最大的位置删掉,方便下一个循环使用argmax
-        for i in range(new_array.size):
-            index=np.argmax(new_array)
-            new_array=np.delete(new_array,index)
-            if(index.size>=target_itemk):
-                return index
+        for i in range(len(new_array)):
+            index[i]=np.argmax(new_array)
+            new_array[index[i]]=-1
+            if(i>=target_itemk):
+                 break
 
-        # 对 data[index,target_movie] 位置处的求平均数
         sum=0
+        pre_score=0
         score=0
         for j in range(index.size):
-            sum=data[index[j],target_movie]+sum
-            while (j>index.size):
-                score=sum/target_itemk
-            return score
+            if(index[j]!=0):
+             user_arr=np.array(data[:,0])
+             movie_arr=np.array(data[:,1])
+             # userindex获取的是相似度最近的userid在data里面的索引，
+             # movieindex获取的是所有目标电影在data里面的索引
+             # 遍历userid 每次选择第一个与movieid最近的一个，然后属于目前userid的score=data[needed_userindex,3]
+             needed_userindex=user_arr[np.where(user_arr==index[j])]
+             needed_movieindex=movie_arr[np.where(user_arr==target_movie)]
+             for i in range(6):
+                 for j in range(needed_movieindex.size):
+                    if(needed_userindex[i]>=needed_movieindex[j]):
+                        real_index=needed_userindex[i]
+                        score=data[real_index,3]
+                        sum=score+sum
+             # print(user_arr[np.where(user_arr==index[j])])
+             # print(movie_arr[np.where(user_arr==target_movie)])
+             pre_score=sum/target_itemk
+             print(pre_score)
+        return pre_score
+
 
 
 
