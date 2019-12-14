@@ -16,16 +16,18 @@ from models.DeepFM import DeepFM
 
 from models.fm import FM
 from models.CF_Knearest import CF_knearest
-
-TRAIN_ROUND = 10000
+# 1,3671,3.0,1260759117
+TRAIN_ROUND = 25000
 # load data
-train_data = PreProcessData("./data/Test.csv",one_hot=False)
+train_data = PreProcessData("./data/ratings_small.csv",one_hot=False)
 
-dataset = train_data.feature
+raw_dataset = train_data.feature
+dataset = raw_dataset[:TRAIN_ROUND,:]
+
 model = CF_knearest(dataset)
 # print(model.simi_mat)
-print(model.predict_score(dataset,56,1029))
-print(model.simi_mat[1,:])
+print(model.predict_score(dataset,1,3671))
+# print(model.simi_mat[1,:])
 # print(model.n_user)
 
 
