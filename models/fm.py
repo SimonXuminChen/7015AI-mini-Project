@@ -50,6 +50,7 @@ class FM(nn.Module):
         loss_index = []
 
         for epoch in range(epochs):
+            loss_index.append(epoch+1)
             training_loss = 0.0
             for t, (xi, xv, y) in enumerate(loader):
                 xi = xi.to(device=self.device, dtype=torch.float)
@@ -72,11 +73,10 @@ class FM(nn.Module):
                 if t % 200 == 0:
                     print('Epoch %d,loss = %.4f' % (epoch + 1, loss.item()))
                     # self.check_accuracy(loader_val, model)
-            loss_index.append(epoch + 1)
             loss_data.append(training_loss)
 
-        plt.title("The result of loss function optimization(FM)")
-        plt.xlabel("epoch")
-        plt.ylabel("loss")
-        plt.plot(loss_index, loss_data)
-        plt.show()
+        # plt.title("The result of loss function optimization(FM)")
+        # plt.xlabel("epoch")
+        # plt.ylabel("loss")
+        # plt.plot(loss_index, loss_data)
+        # plt.show()
