@@ -17,6 +17,10 @@ from models.DeepFM import DeepFM
 from models.fm import FM
 from models.CF_Knearest import CF_knearest
 # 1,3671,3.0,1260759117
+# 2，31
+# 3,588
+np.seterr(divide='ignore',invalid='ignore')
+
 TRAIN_ROUND = 25000
 # load data
 train_data = PreProcessData("./data/ratings_small.csv",one_hot=False)
@@ -24,12 +28,12 @@ train_data = PreProcessData("./data/ratings_small.csv",one_hot=False)
 raw_dataset = train_data.feature
 dataset = raw_dataset[:TRAIN_ROUND,:]
 
+#CF
+CF_start_time=time.time()
 model = CF_knearest(dataset)
-# print(model.simi_mat)
 print(model.predict_score(dataset,1,3671))
-# print(model.simi_mat[1,:])
-# print(model.n_user)
-
+CF_end_time=time.time()
+print("the end of training deefFM, time consume: %d" % (CF_end_time-CF_start_time))
 
 # print(model.predict_score(dataset,1,5)) 会输出[3 0 0 0 0 0 0]
 # a=[2.0,3.0]
