@@ -108,11 +108,11 @@ class DeepFM(nn.Module):
                     training_loss += loss.item()
 
                     if t % 200 == 0:
-                        with open("./deepfm_train.txt", "w") as f:
-                            content = 'Epoch %d,loss = %.4f' % (epoch + 1, loss.item())
-                            content += "\n"
-                            f.writelines(content)
-                            print(content)
+                        with open("./deepfm_train.txt", "w") as f_2:
+                            content_2 = 'Epoch %d,loss = %.4f' % (epoch + 1, loss.item())
+                            content_2 += "\n"
+                            f_2.writelines(content_2)
+                            print(content_2)
                         # self.check_accuracy(loader_val, model)
                 loss_index.append(epoch + 1)
                 loss_data.append(training_loss)
